@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RuangKu — Reservasi Ruang Kampus Digital</title>
+<link id="favicon-main" rel="icon" type="image/svg+xml" href="assets/logo/favicon-b.svg">
+<link id="favicon-shortcut" rel="shortcut icon" type="image/svg+xml" href="assets/logo/favicon-b.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════════
+   RUANGKU — GLASSMORPHISM EDITION
+   Refactored: shared glass foundation, DRY tokens,
+   scroll animations, zero inline styles, bug fixes
+   ════════════════════════════════════════════════════ */
+
+* { margin:0; padding:0; box-sizing:border-box }
+
+/* ── DESIGN TOKENS ─────────────────────────────────── */
+:root {
+  /* Brand palette */
+  --blue:#2563eb;
+  --sky:#3b82f6;
+  --amber:#f59e0b;
+  --amber-light:#fbbf24;
+  --purple:#7c3aed;
+  --white:#fff;
+  --btn-text:#1a1000;          /* replaces hardcoded #1a1000 */
+
+  /* Glass system */
+  --g-bg:rgba(255,255,255,.05);
+  --g-bg-hover:rgba(255,255,255,.09);
+  --g-border:rgba(255,255,255,.10);
+  --g-border-hover:rgba(255,255,255,.22);
+  --g-shadow:0 8px 32px rgba(0,0,0,.28);
+  --g-shadow-hover:0 24px 60px rgba(0,0,0,.45);
+  --g-blur:blur(22px);
+  --g-shimmer:linear-gradient(90deg,transparent,rgba(255,255,255,.20),transparent);
+  --g-sweep:linear-gradient(135deg,rgba(255,255,255,.06) 0%,transparent 55%);
+
+  --radius:16px;
+  --radius-sm:10px;
+}
+
+html { scroll-behavior:smooth; font-size:16px }
+
+body {
+  font-family:'Poppins',sans-serif;
+  color:var(--white);
+  overflow-x:hidden;
+  min-height:100vh;
+  background:
+    radial-gradient(ellipse 80% 80% at 100% -10%, rgba(37,99,235,.30) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 60% at 0% 110%,   rgba(124,58,237,.22) 0%, transparent 60%),
+    linear-gradient(160deg,#050f1c 0%,#0c1d3a 40%,#110829 75%,#050f1c 100%);
+}
+
+a { text-decoration:none; color:inherit }
+
+/* ── BACKGROUND ORBS ───────────────────────────────── */
+.bg-orbs { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden }
+.orb { position:absolute; border-radius:50%; filter:blur(72px) }
+.o1{width:700px;height:700px;background:radial-gradient(circle,rgba(37,99,235,.22),transparent 70%);top:-180px;right:-120px;animation:floatA 28s ease-in-out infinite}
+.o2{width:580px;height:580px;background:radial-gradient(circle,rgba(124,58,237,.18),transparent 70%);bottom:-100px;left:-130px;animation:floatB 34s ease-in-out infinite}
+.o3{width:420px;height:420px;background:radial-gradient(circle,rgba(245,158,11,.10),transparent 70%);top:48%;left:42%;animation:floatC 22s ease-in-out infinite}
+.o4{width:360px;height:360px;background:radial-gradient(circle,rgba(59,130,246,.12),transparent 70%);top:28%;right:8%;animation:floatD 19s ease-in-out infinite}
+
+@keyframes floatA{0%,100%{transform:translate(0,0)scale(1)}50%{transform:translate(-28px,52px)scale(1.07)}}
+@keyframes floatB{0%,100%{transform:translate(0,0)scale(1)}50%{transform:translate(42px,-32px)scale(.93)}}
+@keyframes floatC{0%,100%{transform:translate(0,0)scale(1)}33%{transform:translate(22px,-42px)scale(1.05)}66%{transform:translate(-18px,22px)scale(.96)}}
+@keyframes floatD{0%,100%{transform:translate(0,0)}50%{transform:translate(-22px,36px)}}
+
+.bg-orbs{z-index:0}
+nav,section,footer{position:relative;z-index:1}
+
+/* ── UTILITIES ─────────────────────────────────────── */
+.container{max-width:1120px;margin:0 auto;padding:0 24px}
+
+.badge{
+  display:inline-block;
+  background:rgba(245,158,11,.10);
+  color:var(--amber);
+  border:1px solid rgba(245,158,11,.28);
+  font-weight:700;font-size:.7rem;
+  padding:5px 14px;border-radius:100px;
+  letter-spacing:.07em;text-transform:uppercase;
+  backdrop-filter:blur(8px);
+}
+
+.section-title{
+  font-family:'Poppins',sans-serif;
+  font-size:clamp(1.6rem,4vw,2.4rem);
+  color:var(--white);line-height:1.2;margin-bottom:.5em;
+}
+/* Eliminates all style="margin-top:16px" on h2s in HTML */
+.badge + .section-title{margin-top:16px}
+
+.section-sub{color:rgba(255,255,255,.55);font-size:1.05rem;max-width:560px;line-height:1.75}
+
+/* ── SHARED GLASS FOUNDATION ───────────────────────── */
+/*
+ * Single source of truth for glass card base.
+ * All cards share these 6 properties — declared once here,
+ * each component adds only its unique overrides below.
+ */
+.problem-card,
+.step-card,
+.arch-node,
+.room-card,
+.faq-item {
+  position:relative;
+  background:var(--g-bg);
+  border:1px solid var(--g-border);
+  backdrop-filter:var(--g-blur);
+  -webkit-backdrop-filter:var(--g-blur);
+  box-shadow:var(--g-shadow),inset 0 1px 0 rgba(255,255,255,.08);
+  transition:all .35s ease;
+}
+
+/* Top-edge "light catch" shimmer — the signature glass detail */
+.problem-card::before,
+.step-card::before,
+.arch-node::before,
+.faq-item::before {
+  content:'';
+  position:absolute;
+  top:0;left:10%;right:10%;height:1px;
+  background:var(--g-shimmer);
+  pointer-events:none;
+}
+
+/* Hover light-sweep overlay (white by default, overridden for step-card) */
+.problem-card::after,
+.step-card::after {
+  content:'';
+  position:absolute;inset:0;
+  border-radius:inherit;
+  background:var(--g-sweep);
+  opacity:0;transition:opacity .35s;pointer-events:none;
+}
+.step-card::after{background:linear-gradient(135deg,rgba(59,130,246,.07) 0%,transparent 55%)}
+
+/* Shared hover: lift bg + border + shadow — components add their own translate */
+.problem-card:hover,
+.step-card:hover,
+.arch-node:hover,
+.room-card:hover{
+  background:var(--g-bg-hover);
+  border-color:var(--g-border-hover);
+  box-shadow:var(--g-shadow-hover);
+}
+
+/* Hover reveals the sweep */
+.problem-card:hover::after,
+.step-card:hover::after{opacity:1}
+
+/* ── NAV ───────────────────────────────────────────── */
+nav{
+  position:fixed;top:0;left:0;width:100%;z-index:100;
+  background:rgba(5,15,28,.52);
+  backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  box-shadow:0 4px 32px rgba(0,0,0,.38);
+}
+nav .inner{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;max-width:1120px;margin:0 auto;
+}
+nav .logo{font-family:'Poppins',sans-serif;color:var(--white);font-size:1.15rem;letter-spacing:-.01em}
+nav .logo span{color:var(--amber)}
+nav ul{display:flex;gap:28px;list-style:none}
+nav ul a{color:rgba(255,255,255,.65);font-size:.85rem;font-weight:500;transition:color .2s}
+nav ul a:hover{color:var(--amber)}
+
+.nav-cta{
+  background:linear-gradient(135deg,var(--amber),var(--amber-light));
+  color:var(--btn-text);font-weight:700;font-size:.8rem;
+  padding:8px 22px;border-radius:100px;transition:all .25s;
+  box-shadow:0 4px 18px rgba(245,158,11,.38),inset 0 1px 0 rgba(255,255,255,.22);
+}
+.nav-cta:hover{transform:scale(1.05);box-shadow:0 6px 26px rgba(245,158,11,.55)}
+
+/* ── HERO ──────────────────────────────────────────── */
+.hero{padding:140px 0 100px;overflow:hidden}
+
+.hero .container{
+  position:relative;z-index:2;
+  display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;
+}
+.hero h1{font-family:'Poppins',sans-serif;font-size:clamp(2rem,5vw,3.2rem);line-height:1.15;margin-bottom:20px}
+.hero h1 span{color:var(--amber)}
+.hero p{color:rgba(255,255,255,.65);font-size:1.1rem;line-height:1.75;margin-bottom:32px;max-width:480px}
+.hero .cta-row{display:flex;gap:14px;flex-wrap:wrap}
+
+.btn-primary{
+  display:inline-flex;align-items:center;gap:8px;
+  background:linear-gradient(135deg,var(--amber),var(--amber-light));
+  color:var(--btn-text);font-weight:700;font-size:.95rem;
+  padding:14px 32px;border-radius:100px;
+  transition:all .25s;border:none;cursor:pointer;
+  box-shadow:0 8px 28px rgba(245,158,11,.42),inset 0 1px 0 rgba(255,255,255,.22);
+  animation:glowPulse 3s ease-in-out infinite;
+}
+.btn-primary:hover{
+  transform:translateY(-3px);animation:none;
+  box-shadow:0 14px 40px rgba(245,158,11,.60),inset 0 1px 0 rgba(255,255,255,.22);
+}
+@keyframes glowPulse{
+  0%,100%{box-shadow:0 8px 28px rgba(245,158,11,.42),inset 0 1px 0 rgba(255,255,255,.22)}
+  50%{box-shadow:0 8px 42px rgba(245,158,11,.65),inset 0 1px 0 rgba(255,255,255,.22)}
+}
+
+.btn-outline{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.06);color:var(--white);
+  font-weight:600;font-size:.95rem;padding:14px 32px;
+  border-radius:100px;border:1px solid rgba(255,255,255,.18);
+  transition:all .25s;cursor:pointer;backdrop-filter:blur(10px);
+}
+.btn-outline:hover{border-color:rgba(245,158,11,.55);color:var(--amber);background:rgba(245,158,11,.08)}
+
+/* Hero Card — standalone premium glass (not in shared group) */
+.hero-visual{position:relative}
+
+.hero-card{
+  background:rgba(255,255,255,.055);
+  border:1px solid rgba(255,255,255,.13);
+  border-radius:24px;padding:32px;
+  backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+  box-shadow:
+    0 36px 84px rgba(0,0,0,.55),
+    inset 0 1px 0 rgba(255,255,255,.14),
+    inset 1px 0 0 rgba(255,255,255,.05);
+  position:relative;
+}
+.hero-card::before{
+  content:'';position:absolute;
+  top:0;left:18%;right:18%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.40),transparent);
+}
+.hero-card::after{
+  content:'';position:absolute;
+  top:-60px;right:-60px;width:200px;height:200px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(37,99,235,.12),transparent 70%);
+  pointer-events:none;
+}
+
+.hero-card .step-mini{
+  display:flex;align-items:center;gap:14px;
+  padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05);
+}
+.hero-card .step-mini:last-child{border-bottom:none}
+
+.step-num{
+  width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:.8rem;flex-shrink:0;
+  box-shadow:0 4px 14px rgba(37,99,235,.48);
+}
+.step-mini .label{font-size:.9rem;font-weight:600;color:var(--white)}
+.step-mini .desc{font-size:.75rem;color:rgba(255,255,255,.38);margin-top:2px}
+
+.time-badge{
+  position:absolute;top:-16px;right:-16px;
+  background:linear-gradient(135deg,var(--amber),var(--amber-light));
+  color:var(--btn-text);font-family:'Poppins',sans-serif;
+  font-weight:700;font-size:.85rem;padding:10px 18px;
+  border-radius:12px;box-shadow:0 8px 28px rgba(245,158,11,.52);
+  transform:rotate(3deg);
+}
+
+/* ── PROBLEMS ──────────────────────────────────────── */
+.problems{padding:100px 0}
+.problems .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:48px}
+
+/* Component-specific only — base from shared group */
+.problem-card{border-radius:var(--radius);padding:32px;overflow:hidden}
+.problem-card:hover{transform:translateY(-7px)}
+
+.problem-icon{
+  width:52px;height:52px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;margin-bottom:16px;
+}
+.problem-card:nth-child(1) .problem-icon{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.2)}
+.problem-card:nth-child(2) .problem-icon{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2)}
+.problem-card:nth-child(3) .problem-icon{background:rgba(37,99,235,.12);border:1px solid rgba(37,99,235,.2)}
+
+.problem-card h3{font-size:1.05rem;margin-bottom:8px;color:var(--white)}
+.problem-card p{font-size:.9rem;color:rgba(255,255,255,.52);line-height:1.65}
+
+/* ── HOW IT WORKS ──────────────────────────────────── */
+.how{padding:100px 0}
+.how .header{text-align:center;margin-bottom:60px}
+.how .header .section-sub{margin:0 auto}
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+
+/* Component-specific only — no overflow:hidden (fixes step-arrow clip bug) */
+.step-card{border-radius:var(--radius);padding:36px 28px}
+
+/* Override shared hover to blue theme */
+.step-card:hover{
+  background:rgba(59,130,246,.07);
+  border-color:rgba(59,130,246,.28);
+  transform:translateY(-5px);
+  box-shadow:0 24px 60px rgba(37,99,235,.22);
+}
+
+.step-card .num{
+  font-family:'Poppins',sans-serif;font-size:2.4rem;
+  font-weight:700;color:rgba(255,255,255,.07);
+  line-height:1;margin-bottom:16px;
+  transition:color .3s,text-shadow .3s;
+}
+.step-card:hover .num{color:var(--sky);text-shadow:0 0 22px rgba(59,130,246,.42)}
+.step-card h3{font-size:1rem;font-weight:700;color:var(--white);margin-bottom:8px}
+.step-card p{font-size:.85rem;color:rgba(255,255,255,.48);line-height:1.65}
+
+.step-card .tools{
+  margin-top:12px;font-size:.75rem;font-weight:600;color:var(--sky);
+  background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);
+  padding:4px 10px;border-radius:6px;display:inline-block;
+}
+.step-arrow{
+  position:absolute;right:-14px;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:rgba(255,255,255,.32);font-size:.8rem;z-index:2;backdrop-filter:blur(8px);
+}
+
+/* ── ARCHITECTURE ──────────────────────────────────── */
+.arch{padding:100px 0;position:relative}
+.arch::before{
+  content:'';position:absolute;inset:0;
+  background:rgba(5,15,28,.42);
+  border-top:1px solid rgba(255,255,255,.06);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.arch .container{position:relative;z-index:1}
+
+.arch-diagram{
+  margin-top:48px;
+  display:grid;grid-template-columns:repeat(5,1fr);gap:16px;align-items:start;
+}
+
+/* Component-specific — stronger blur override, needs overflow:hidden */
+.arch-node{
+  text-align:center;padding:28px 12px;
+  border-radius:var(--radius-sm);overflow:hidden;
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+}
+.arch-node:hover{
+  background:rgba(255,255,255,.09);
+  border-color:rgba(245,158,11,.25);
+  transform:translateY(-5px);
+  box-shadow:0 20px 52px rgba(0,0,0,.38);
+}
+.arch-node .icon{font-size:2rem;margin-bottom:10px}
+.arch-node h4{font-size:.85rem;font-weight:700;margin-bottom:4px;color:var(--white)}
+.arch-node p{font-size:.7rem;color:rgba(255,255,255,.42);line-height:1.55}
+
+.arch-arrow{
+  display:flex;align-items:center;justify-content:center;
+  color:var(--amber);font-size:1.2rem;padding-top:20px;opacity:.7;
+}
+
+/* ── BEFORE / AFTER ────────────────────────────────── */
+.compare{padding:100px 0}
+.compare .header{text-align:center;margin-bottom:48px}
+.compare .header .section-sub{margin:0 auto}
+.compare-grid{
+  display:grid;grid-template-columns:1fr 60px 1fr;
+  align-items:stretch;max-width:900px;margin:0 auto;
+}
+
+/* Standalone glass — unique coloring, not in shared group */
+.compare-col{
+  padding:36px;border-radius:var(--radius);
+  backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
+  position:relative;overflow:hidden;
+  box-shadow:var(--g-shadow);
+}
+.compare-col::before{
+  content:'';position:absolute;
+  top:0;left:15%;right:15%;height:1px;
+  background:var(--g-shimmer);
+}
+.compare-col.before{background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.18)}
+.compare-col.after{background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.18)}
+.compare-col h3{font-size:1.1rem;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.compare-col.before h3{color:#f87171}
+.compare-col.after h3{color:#4ade80}
+.compare-col li{
+  list-style:none;padding:10px 0;font-size:.9rem;
+  color:rgba(255,255,255,.58);
+  border-bottom:1px solid rgba(255,255,255,.05);
+  display:flex;align-items:flex-start;gap:10px;line-height:1.55;
+}
+.compare-col li:last-child{border-bottom:none}
+.compare-vs{
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Poppins',sans-serif;font-weight:700;
+  color:rgba(255,255,255,.22);font-size:1rem;
+}
+
+/* ── ROOMS ─────────────────────────────────────────── */
+.rooms{padding:100px 0}
+.rooms .header{text-align:center;margin-bottom:48px}
+.rooms .header .section-sub{margin:0 auto}
+.rooms-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
+
+/* Component-specific only */
+.room-card{border-radius:var(--radius);overflow:hidden}
+.room-card:hover{transform:translateY(-7px)}
+
+.room-card .room-img{
+  height:150px;display:flex;align-items:center;justify-content:center;
+  font-size:3.2rem;position:relative;overflow:hidden;
+}
+.room-card .room-img::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
+}
+.room-card:nth-child(1) .room-img{background:linear-gradient(135deg,rgba(37,99,235,.28),rgba(37,99,235,.06))}
+.room-card:nth-child(2) .room-img{background:linear-gradient(135deg,rgba(245,158,11,.28),rgba(245,158,11,.06))}
+.room-card:nth-child(3) .room-img{background:linear-gradient(135deg,rgba(22,163,74,.28), rgba(22,163,74,.06))}
+.room-card:nth-child(4) .room-img{background:linear-gradient(135deg,rgba(124,58,237,.28),rgba(124,58,237,.06))}
+.room-card .room-info{padding:20px;border-top:1px solid rgba(255,255,255,.05)}
+.room-card .room-info h3{font-size:1rem;color:var(--white);margin-bottom:4px}
+.room-card .room-info p{font-size:.8rem;color:rgba(255,255,255,.38)}
+
+/* ── FLYWHEEL ──────────────────────────────────────── */
+.flywheel{padding:100px 0}
+.flywheel .header{text-align:center;margin-bottom:48px}
+.flywheel .header .section-sub{margin:0 auto}
+.flywheel-ring{display:flex;justify-content:center;flex-wrap:wrap;max-width:800px;margin:0 auto}
+.fly-step{flex:1;min-width:140px;text-align:center;padding:24px 12px;position:relative}
+.fly-step .fly-num{
+  width:44px;height:44px;border-radius:50%;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  color:var(--white);display:inline-flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:.85rem;margin-bottom:12px;
+  box-shadow:0 4px 18px rgba(37,99,235,.48),inset 0 1px 0 rgba(255,255,255,.22);
+}
+.fly-step p{font-size:.82rem;color:rgba(255,255,255,.52);line-height:1.55}
+.fly-step:not(:last-child)::after{content:'→';position:absolute;right:-6px;top:32px;color:rgba(255,255,255,.22);font-size:1.1rem}
+
+/* ── FAQ ───────────────────────────────────────────── */
+.faq{padding:100px 0}
+.faq .header{text-align:center;margin-bottom:48px}
+.faq .header .section-sub{margin:0 auto}
+.faq-list{max-width:720px;margin:0 auto}
+
+/* Component-specific — faster transition, smaller shadow override */
+.faq-item{
+  border-radius:var(--radius-sm);margin-bottom:10px;
+  box-shadow:0 4px 16px rgba(0,0,0,.18);
+  transition:all .25s ease;
+}
+.faq-item.open{
+  background:rgba(59,130,246,.06);
+  border-color:rgba(59,130,246,.25);
+  box-shadow:0 8px 28px rgba(37,99,235,.15);
+}
+.faq-item:hover:not(.open){
+  border-color:rgba(255,255,255,.18);
+  background:rgba(255,255,255,.07);
+}
+.faq-q{
+  padding:20px 24px;font-weight:600;font-size:.95rem;
+  cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--white);
+}
+.faq-q::after{
+  content:'+';font-size:1.3rem;color:rgba(255,255,255,.30);
+  transition:transform .25s,color .25s;
+  font-family:'Poppins',sans-serif;font-weight:700;line-height:1;flex-shrink:0;
+}
+.faq-item.open .faq-q::after{transform:rotate(45deg);color:var(--sky)}
+.faq-a{padding:0 24px 20px;font-size:.88rem;color:rgba(255,255,255,.52);line-height:1.8;display:none}
+.faq-item.open .faq-a{display:block}
+
+/* ── CTA ───────────────────────────────────────────── */
+.cta-section{padding:100px 0;text-align:center;position:relative;overflow:hidden}
+.cta-section::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 50%,rgba(37,99,235,.13),transparent 70%),
+    rgba(5,15,28,.32);
+  border-top:1px solid rgba(255,255,255,.06);
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.cta-section::after{
+  content:'';position:absolute;
+  top:0;left:25%;right:25%;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(245,158,11,.55),transparent);
+  border-radius:100px;
+}
+.cta-section .container{position:relative;z-index:1}
+.cta-section h2{font-family:'Poppins',sans-serif;font-size:clamp(1.5rem,3vw,2.2rem);margin-bottom:16px;color:var(--white)}
+.cta-section p{color:rgba(255,255,255,.52);margin-bottom:32px;font-size:1rem}
+
+.cta-footnote{margin-top:16px;font-size:.8rem;color:rgba(255,255,255,.38)}
+
+/* ── FOOTER ────────────────────────────────────────── */
+footer{
+  padding:40px 0;
+  border-top:1px solid rgba(255,255,255,.06);
+  color:rgba(255,255,255,.32);font-size:.8rem;text-align:center;
+  background:rgba(5,15,28,.68);backdrop-filter:blur(14px);
+}
+
+/* ── SCROLL ANIMATIONS ─────────────────────────────── */
+/* Driven by IntersectionObserver in JS — CSS only handles state */
+.anim{
+  opacity:0;
+  transform:translateY(28px);
+  transition:opacity .6s ease,transform .6s ease;
+}
+.anim.visible{opacity:1;transform:translateY(0)}
+.anim.d1.visible{transition-delay:.10s}
+.anim.d2.visible{transition-delay:.20s}
+.anim.d3.visible{transition-delay:.30s}
+.anim.d4.visible{transition-delay:.40s}
+.anim.d5.visible{transition-delay:.50s}
+.anim.d6.visible{transition-delay:.60s}
+
+/* Accessibility: honour reduced-motion & ensure no-JS doesn't hide content */
+@media(prefers-reduced-motion:reduce){
+  .anim,.anim.visible{opacity:1;transform:none;transition:none}
+  .orb{animation:none}
+  .btn-primary{animation:none}
+}
+
+/* ── RESPONSIVE ────────────────────────────────────── */
+@media(max-width:900px){
+  .hero .container{grid-template-columns:1fr}
+  .hero-visual{display:none}
+  .steps-grid{grid-template-columns:1fr}
+  .step-arrow{display:none}
+  .arch-diagram{grid-template-columns:1fr 1fr;gap:12px}
+  .arch-arrow{display:none}
+  .compare-grid{grid-template-columns:1fr;gap:16px}
+  .compare-vs{padding:8px 0}
+  nav ul{display:none}
+}
+@media(max-width:600px){
+  .arch-diagram{grid-template-columns:1fr}
+  .flywheel-ring{flex-direction:column;align-items:center}
+  .fly-step::after{content:'↓'!important;position:static!important;display:block;margin:4px 0}
+}
+</style>
+</head>
+<body>
+
+<!-- AMBIENT BACKGROUND ORBS -->
+<div class="bg-orbs" aria-hidden="true">
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+  <div class="orb o4"></div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="inner">
+    <a href="#" class="logo">Ruang<span>Ku</span></a>
+    <ul>
+      <li><a href="#masalah">Masalah</a></li>
+      <li><a href="#cara-kerja">Cara Kerja</a></li>
+      <li><a href="#arsitektur">Sistem</a></li>
+      <li><a href="#ruangan">Ruangan</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+    <a href="#reservasi" class="nav-cta">Ajukan Reservasi</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="container">
+    <div>
+      <span class="badge anim">Sistem Reservasi Kampus Digital</span>
+      <h1 class="anim d1">Pinjam Ruang Kampus<br>dalam <span>3 Menit</span><br>dari HP</h1>
+      <p class="anim d2">Tanpa antre di BAK, tanpa borang peminjaman ruangan manual. RuangKu mengubah proses reservasi ruang kampus yang manual menjadi digital — cukup scan QR, isi form, selesai.</p>
+      <div class="cta-row anim d3">
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSfSBJ9tvqzmp0fCZtDEqB1SiJmFMxd3Ri8xD8ftaM94Tfdr1Q/viewform?usp=header" target="_blank" rel="noopener noreferrer" class="btn-primary">🚀 Ajukan Reservasi</a>
+        <a href="#cara-kerja" class="btn-outline">Lihat Cara Kerja ↓</a>
+      </div>
+    </div>
+    <div class="hero-visual anim d4">
+      <div class="hero-card">
+        <div class="time-badge">⚡ 3 menit!</div>
+        <div class="step-mini">
+          <div class="step-num">1</div>
+          <div><div class="label">Scan QR Code</div><div class="desc">Di pintu ruang atau mading kampus</div></div>
+        </div>
+        <div class="step-mini">
+          <div class="step-num">2</div>
+          <div><div class="label">Isi Google Form</div><div class="desc">Nama, ruang, tanggal, jam</div></div>
+        </div>
+        <div class="step-mini">
+          <div class="step-num">3</div>
+          <div><div class="label">Submit & Tunggu</div><div class="desc">Data masuk ke sistem BAK</div></div>
+        </div>
+        <div class="step-mini">
+          <div class="step-num">4</div>
+          <div><div class="label">Staf BAK Review</div><div class="desc">Approve / tolak dari Sheets</div></div>
+        </div>
+        <div class="step-mini">
+          <div class="step-num">5</div>
+          <div><div class="label">Notifikasi WA</div><div class="desc">Konfirmasi langsung ke HP kamu</div></div>
+        </div>
+        <div class="step-mini">
+          <div class="step-num">6</div>
+          <div><div class="label">Gunakan Ruang ✓</div><div class="desc">Datang sesuai jadwal</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MASALAH -->
+<section class="problems" id="masalah">
+  <div class="container">
+    <span class="badge">Kenapa RuangKu dibutuhkan?</span>
+    <h2 class="section-title">Masalah yang Kami Temukan</h2>
+    <p class="section-sub">Dari wawancara dan observasi lapangan, ini 3 masalah utama peminjaman ruang di kampus saat ini:</p>
+    <div class="grid">
+      <div class="problem-card">
+        <div class="problem-icon">⏱️</div>
+        <h3>30–60 Menit Terbuang per Pengajuan</h3>
+        <p>Mahasiswa harus datang langsung ke BAK, antre, isi borang peminjaman ruangan, lalu menunggu konfirmasi yang tidak jelas kapan datangnya.</p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">💥</div>
+        <h3>Bentrok Jadwal Ruang</h3>
+        <p>Tidak ada sistem terpusat — konfirmasi hanya verbal atau borang peminjaman ruangan. Akibatnya, dua kelompok bisa booking ruang yang sama.</p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">📱</div>
+        <h3>Staf BAK Kewalahan</h3>
+        <p>Pertanyaan soal ruang masuk berulang lewat tatap muka langsung ke staf, sehingga waktu kerja produktif mereka tersita setiap hari.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CARA KERJA -->
+<section class="how" id="cara-kerja">
+  <div class="container">
+    <div class="header">
+      <span class="badge">Cara Kerja</span>
+      <h2 class="section-title">6 Langkah Sederhana</h2>
+      <p class="section-sub">Dari scan QR sampai pakai ruang — semuanya bisa dilakukan dari HP tanpa perlu ke BAK.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="num">01</div>
+        <h3>Scan QR Code</h3>
+        <p>Scan QR code yang tertempel di pintu ruang atau mading kampus menggunakan kamera HP.</p>
+        <span class="tools">📍 QR Code di Pintu Ruang</span>
+        <div class="step-arrow">→</div>
+      </div>
+      <div class="step-card">
+        <div class="num">02</div>
+        <h3>Isi Google Form</h3>
+        <p>Isi data reservasi: Nama, NIM, UKM/organisasi, ruang yang diinginkan, tanggal, jam, keperluan, dan nomor WA.</p>
+        <span class="tools">📝 Google Forms</span>
+        <div class="step-arrow">→</div>
+      </div>
+      <div class="step-card">
+        <div class="num">03</div>
+        <h3>Data Masuk Sheets</h3>
+        <p>Setelah submit, data otomatis masuk ke Google Sheets tab "Antrian" sebagai database terpusat.</p>
+        <span class="tools">📊 Google Sheets</span>
+        <div class="step-arrow">→</div>
+      </div>
+      <div class="step-card">
+        <div class="num">04</div>
+        <h3>Staf BAK Review</h3>
+        <p>Staf BAK membuka Sheets, cek ketersediaan, lalu update kolom STATUS: Disetujui / Ditolak / Konflik.</p>
+        <span class="tools">✅ Dashboard Admin</span>
+        <div class="step-arrow">→</div>
+      </div>
+      <div class="step-card">
+        <div class="num">05</div>
+        <h3>Notifikasi via WA</h3>
+        <p>Pengguna menerima konfirmasi langsung ke WhatsApp — tahu pasti apakah ruang sudah di-approve atau tidak.</p>
+        <span class="tools">💬 WhatsApp</span>
+        <div class="step-arrow">→</div>
+      </div>
+      <div class="step-card">
+        <div class="num">06</div>
+        <h3>Gunakan Ruang ✓</h3>
+        <p>Datang ke ruang sesuai jadwal yang sudah dikonfirmasi. Tidak ada lagi bentrok atau ketidakpastian.</p>
+        <span class="tools">🏫 Ruang Siap Pakai</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ARSITEKTUR SISTEM -->
+<section class="arch" id="arsitektur">
+  <div class="container">
+    <span class="badge">Arsitektur Sistem</span>
+    <h2 class="section-title">Komponen Sistem RuangKu</h2>
+    <p class="section-sub">Semua menggunakan tools gratis — tanpa biaya berlangganan, tanpa coding.</p>
+    <div class="arch-diagram">
+      <div class="arch-node">
+        <div class="icon">📱</div>
+        <h4>Pengguna</h4>
+        <p>Mahasiswa / Pengurus UKM scan QR dari HP</p>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="icon">📝</div>
+        <h4>Google Forms</h4>
+        <p>Input data reservasi (Nama, NIM, Ruang, Tanggal, Jam)</p>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="icon">📊</div>
+        <h4>Google Sheets</h4>
+        <p>Database terpusat + Dashboard admin BAK</p>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="icon">👨‍💼</div>
+        <h4>Staf BAK</h4>
+        <p>Review &amp; update status: Setuju / Tolak / Konflik</p>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="icon">💬</div>
+        <h4>Notifikasi WA</h4>
+        <p>Konfirmasi otomatis ke pengguna via WA / email</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BEFORE vs AFTER -->
+<section class="compare" id="perbandingan">
+  <div class="container">
+    <div class="header">
+      <span class="badge">Perbandingan</span>
+      <h2 class="section-title">Sebelum vs Sesudah RuangKu</h2>
+      <p class="section-sub">Lihat perbedaan nyata yang dirasakan mahasiswa dan staf BAK.</p>
+    </div>
+    <div class="compare-grid">
+      <div class="compare-col before">
+        <h3>❌ Sebelum (Manual)</h3>
+        <ul>
+          <li><span>⏱️</span> 30–60 menit per pengajuan</li>
+          <li><span>🚶</span> Harus datang ke BAK secara fisik</li>
+          <li><span>📄</span> Borang peminjaman ruangan manual, mudah hilang</li>
+          <li><span>📵</span> Tidak bisa cek ketersediaan real-time</li>
+          <li><span>💥</span> Bentrok jadwal sering terjadi</li>
+          <li><span>😰</span> Staf BAK dibanjiri pertanyaan langsung (tatap muka)</li>
+        </ul>
+      </div>
+      <div class="compare-vs">VS</div>
+      <div class="compare-col after">
+        <h3>✅ Sesudah (RuangKu)</h3>
+        <ul>
+          <li><span>⚡</span> 3 menit dari HP</li>
+          <li><span>🏠</span> Reservasi dari mana saja</li>
+          <li><span>☁️</span> Data tersimpan digital, aman</li>
+          <li><span>📊</span> Jadwal terpusat di Google Sheets</li>
+          <li><span>🛡️</span> Bentrok terdeteksi oleh admin</li>
+          <li><span>😌</span> Staf BAK kelola 10–15 menit/hari</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RUANGAN -->
+<section class="rooms" id="ruangan">
+  <div class="container">
+    <div class="header">
+      <span class="badge">Ruang Tersedia</span>
+      <h2 class="section-title">Ruangan yang Bisa Dipesan</h2>
+      <p class="section-sub">Ruang non-kelas yang bisa direservasi melalui RuangKu.</p>
+    </div>
+    <div class="rooms-grid">
+      <div class="room-card">
+        <div class="room-img">🏛️</div>
+        <div class="room-info">
+          <h3>GSG (Gedung Serbaguna)</h3>
+          <p>Untuk seminar, workshop, acara besar organisasi</p>
+        </div>
+      </div>
+      <div class="room-card">
+        <div class="room-img">🏀</div>
+        <div class="room-info">
+          <h3>GOR (Gedung Olahraga)</h3>
+          <p>Untuk kegiatan olahraga, turnamen, latihan UKM</p>
+        </div>
+      </div>
+      <div class="room-card">
+        <div class="room-img">🔬</div>
+        <div class="room-info">
+          <h3>Laboratorium</h3>
+          <p>Untuk praktikum tambahan, riset, dan proyek</p>
+        </div>
+      </div>
+      <div class="room-card">
+        <div class="room-img">📚</div>
+        <div class="room-info">
+          <h3>Ruang Kelas</h3>
+          <p>Untuk rapat organisasi, diskusi kelompok, tutoring</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FLYWHEEL -->
+<section class="flywheel">
+  <div class="container">
+    <div class="header">
+      <span class="badge">Efek Flywheel</span>
+      <h2 class="section-title">Semakin Banyak Pengguna, Semakin Baik Sistemnya</h2>
+      <p class="section-sub">Loop positif yang membuat RuangKu makin kuat seiring waktu.</p>
+    </div>
+    <div class="flywheel-ring">
+      <div class="fly-step">
+        <div class="fly-num">1</div>
+        <p>Lebih banyak mahasiswa submit via Forms</p>
+      </div>
+      <div class="fly-step">
+        <div class="fly-num">2</div>
+        <p>Data jadwal di Sheets makin lengkap &amp; akurat</p>
+      </div>
+      <div class="fly-step">
+        <div class="fly-num">3</div>
+        <p>Konflik jadwal makin jarang → kepercayaan naik</p>
+      </div>
+      <div class="fly-step">
+        <div class="fly-num">4</div>
+        <p>BAK makin cepat konfirmasi</p>
+      </div>
+      <div class="fly-step">
+        <div class="fly-num">5</div>
+        <p>Mahasiswa baru langsung pakai sistem ini</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+  <div class="container">
+    <div class="header">
+      <span class="badge">FAQ</span>
+      <h2 class="section-title">Pertanyaan yang Sering Ditanya</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item open">
+        <div class="faq-q">Apakah RuangKu gratis?</div>
+        <div class="faq-a">Ya, 100% gratis. RuangKu menggunakan Google Forms dan Google Sheets yang sudah tersedia tanpa biaya. Tidak perlu install aplikasi tambahan.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Berapa lama proses konfirmasi?</div>
+        <div class="faq-a">Target kami adalah konfirmasi dalam waktu kurang dari 4 jam pada hari kerja. Staf BAK akan mereview pengajuan yang masuk dan mengirim notifikasi via WhatsApp.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Bagaimana jika terjadi bentrok jadwal?</div>
+        <div class="faq-a">Staf BAK akan melihat seluruh jadwal di Google Sheets secara terpusat. Jika ada bentrok, status akan diupdate menjadi "Konflik" dan pengguna akan dihubungi untuk reschedule.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Apakah perlu install aplikasi?</div>
+        <div class="faq-a">Tidak. Cukup scan QR code dengan kamera HP, isi Google Form di browser, selesai. Tidak perlu download atau install apapun.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Ruangan apa saja yang bisa dipesan?</div>
+        <div class="faq-a">Saat ini RuangKu melayani reservasi untuk ruang non-kelas: GSG (Gedung Serbaguna), GOR, Laboratorium, dan Ruang Kelas untuk keperluan di luar jadwal perkuliahan.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Bagaimana jika internet mati?</div>
+        <div class="faq-a">Kami sudah menyiapkan SOP fallback dengan borang peminjaman ruangan manual sebagai cadangan. Namun, Google Forms dan Sheets memiliki uptime yang sangat tinggi.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="reservasi">
+  <div class="container">
+    <h2>Siap Pinjam Ruang Tanpa Ribet?</h2>
+    <p>Scan QR code atau klik tombol di bawah untuk mulai reservasi sekarang.</p>
+    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfSBJ9tvqzmp0fCZtDEqB1SiJmFMxd3Ri8xD8ftaM94Tfdr1Q/viewform?usp=header" target="_blank" rel="noopener noreferrer" class="btn-primary">🚀 Ajukan Reservasi Sekarang</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <p>© 2026 RuangKu — Sistem Reservasi Ruang Kampus Digital · Dibuat untuk tugas Kewirausahaan</p>
+  </div>
+</footer>
+
+<script>
+/* ── ANIMATED TAB LOGO (LETTER B) ─────────────────── */
+(function animateTabLogo() {
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReducedMotion) return;
+
+  const mainFavicon = document.getElementById('favicon-main');
+  const shortcutFavicon = document.getElementById('favicon-shortcut');
+  if (!mainFavicon) return;
+
+  const frames = [
+    'assets/logo/favicon-b-1.svg',
+    'assets/logo/favicon-b-2.svg',
+    'assets/logo/favicon-b-3.svg',
+    'assets/logo/favicon-b-4.svg'
+  ];
+
+  let frameIndex = 0;
+  setInterval(() => {
+    frameIndex = (frameIndex + 1) % frames.length;
+    const nextFrame = frames[frameIndex];
+    mainFavicon.href = nextFrame;
+    if (shortcutFavicon) shortcutFavicon.href = nextFrame;
+  }, 680);
+})();
+
+/* ── FAQ ACCORDION ─────────────────────────────────── */
+document.querySelectorAll('.faq-q').forEach(q => {
+  q.addEventListener('click', () => {
+    const item = q.parentElement;
+    const wasOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+    if (!wasOpen) item.classList.add('open');
+  });
+});
+
+/* ── SCROLL-TRIGGERED ANIMATIONS ──────────────────── */
+/*
+ * Uses IntersectionObserver instead of CSS animation:
+ * - Fires only when elements enter the viewport
+ * - Respects prefers-reduced-motion (handled in CSS)
+ * - Unobserves after trigger to free memory
+ */
+(function initScrollAnimations() {
+  const observer = new IntersectionObserver(
+    entries => entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target); // fire once, free memory
+      }
+    }),
+    { threshold: 0.12 }
+  );
+
+  document.querySelectorAll('.anim').forEach(el => observer.observe(el));
+})();
+</script>
+</body>
+</html>
