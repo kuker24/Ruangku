@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate print-ready RuangKu QR assets.
+Generate premium print-ready RuangKu QR assets.
 Outputs:
 - assets/qr/RuangKu_QR_Poster_A4.png
 - assets/qr/RuangKu_QR_Poster_A4.pdf
@@ -17,6 +17,7 @@ import qrcode
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 FORM_URL = "https://kuker24.github.io/Ruangku/"
+SHORT_URL = "kuker24.github.io/Ruangku"
 
 ROOT = Path(__file__).resolve().parent
 OUT_DIR = ROOT / "assets" / "qr"
@@ -40,7 +41,7 @@ def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFo
 # -------------------------
 # Drawing helpers
 # -------------------------
-def vertical_gradient(w: int, h: int, top=(11, 29, 58), mid=(17, 42, 79), bottom=(10, 20, 42)) -> Image.Image:
+def vertical_gradient(w: int, h: int, top=(8, 21, 43), mid=(14, 34, 66), bottom=(9, 18, 36)) -> Image.Image:
     img = Image.new("RGB", (w, h), top)
     draw = ImageDraw.Draw(img)
     for y in range(h):
@@ -85,6 +86,24 @@ def rounded_rect(draw: ImageDraw.ImageDraw, box, radius, fill=None, outline=None
     draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
 
 
+def add_rounded_shadow(
+    base: Image.Image,
+    box,
+    *,
+    radius: int,
+    color=(0, 0, 0, 120),
+    blur: int = 18,
+    offset: tuple[int, int] = (0, 12),
+):
+    x1, y1, x2, y2 = box
+    ox, oy = offset
+    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    d.rounded_rectangle((x1 + ox, y1 + oy, x2 + ox, y2 + oy), radius=radius, fill=color)
+    layer = layer.filter(ImageFilter.GaussianBlur(blur))
+    base.alpha_composite(layer)
+
+
 def draw_text_readable(
     draw: ImageDraw.ImageDraw,
     xy: tuple[int, int],
@@ -95,7 +114,7 @@ def draw_text_readable(
     stroke_fill: tuple[int, int, int] = (8, 18, 36),
     stroke_width: int = 2,
 ):
-    """Draw text with subtle dark stroke so it stays readable on bright gradients."""
+    """Draw text with subtle dark stroke for stronger readability."""
     draw.text(xy, text, fill=fill, font=font, stroke_width=stroke_width, stroke_fill=stroke_fill)
 
 
@@ -113,98 +132,152 @@ def generate_a4_poster():
     W, H = 2480, 3508
     canvas = vertical_gradient(W, H).convert("RGBA")
 
-    # ambient glows
-    draw_glow_circle(canvas, (W - 220, 360), 400, color=(37, 99, 235), alpha=130, blur=85)
-    draw_glow_circle(canvas, (300, H - 350), 420, color=(124, 58, 237), alpha=100, blur=95)
-    draw_glow_circle(canvas, (W // 2, H // 2 + 250), 260, color=(245, 158, 11), alpha=65, blur=70)
+    # Ambient background glows
+    draw_glow_circle(canvas, (W - 170, 330), 430, color=(37, 99, 235), alpha=140, blur=90)
+    draw_glow_circle(canvas, (260, H - 320), 460, color=(124, 58, 237), alpha=110, blur=95)
+    draw_glow_circle(canvas, (W // 2, H // 2 + 340), 300, color=(245, 158, 11), alpha=70, blur=75)
 
     draw = ImageDraw.Draw(canvas)
 
-    # Top brand area
-    f_brand = load_font(98, bold=True)
-    f_sub = load_font(40, bold=False)
-    f_title = load_font(92, bold=True)
-    f_desc = load_font(42, bold=False)
-    f_steps = load_font(34, bold=False)
-    f_footer = load_font(26, bold=False)
-    f_pill = load_font(34, bold=True)
+    # Fonts
+    f_badge = load_font(34, bold=True)
+    f_brand = load_font(104, bold=True)
+    f_title = load_font(96, bold=True)
+    f_sub = load_font(42, bold=False)
+    f_scan = load_font(34, bold=True)
+    f_step = load_font(38, bold=False)
+    f_step_num = load_font(38, bold=True)
+    f_url_label = load_font(30, bold=True)
+    f_url = load_font(36, bold=True)
+    f_footer = load_font(28, bold=False)
 
-    # Brand title
+    # Top badge
+    badge_text = "RUANGKU • CAMPUS RESERVATION"
+    badge_w = int(draw.textlength(badge_text, font=f_badge)) + 84
+    badge_h = 74
+    badge_x = (W - badge_w) // 2
+    badge_y = 82
+    rounded_rect(
+        draw,
+        (badge_x, badge_y, badge_x + badge_w, badge_y + badge_h),
+        26,
+        fill=(245, 158, 11, 238),
+        outline=(255, 219, 130, 255),
+        width=2,
+    )
+    draw.text((badge_x + 42, badge_y + 18), badge_text, fill=(26, 18, 2), font=f_badge)
+
+    # Headline
     brand_text = "RuangKu"
     brand_w = draw.textlength(brand_text, font=f_brand)
-    draw.text(((W - brand_w) // 2, 150), brand_text, fill=(255, 255, 255), font=f_brand)
+    draw_text_readable(draw, ((W - int(brand_w)) // 2, 182), brand_text, f_brand, fill=(255, 255, 255), stroke_width=3)
 
-    sub_text = "Sistem Reservasi Ruang Kampus Digital"
+    title_text = "SCAN QR UNTUK PINJAM RUANG"
+    title_w = draw.textlength(title_text, font=f_title)
+    draw_text_readable(draw, ((W - int(title_w)) // 2, 310), title_text, f_title, fill=(255, 255, 255), stroke_width=3)
+
+    sub_text = "Cepat, rapi, profesional — tanpa antre di BAK"
     sub_w = draw.textlength(sub_text, font=f_sub)
-    draw_text_readable(draw, ((W - sub_w) // 2, 268), sub_text, f_sub, fill=(246, 250, 255), stroke_width=2)
+    draw_text_readable(draw, ((W - int(sub_w)) // 2, 430), sub_text, f_sub, fill=(238, 246, 255), stroke_width=2)
 
-    # Main heading
-    h_text = "SCAN UNTUK RESERVASI"
-    h_w = draw.textlength(h_text, font=f_title)
-    draw.text(((W - h_w) // 2, 390), h_text, fill=(255, 255, 255), font=f_title)
+    # Main glass card
+    card = (190, 560, W - 190, 3040)
+    add_rounded_shadow(canvas, card, radius=56, color=(0, 0, 0, 125), blur=24, offset=(0, 16))
+    rounded_rect(draw, card, 56, fill=(255, 255, 255, 24), outline=(255, 255, 255, 88), width=2)
+    draw.line((card[0] + 140, card[1] + 1, card[2] - 140, card[1] + 1), fill=(255, 255, 255, 145), width=2)
 
-    # Glass card container
-    card_margin_x = 210
-    card_top = 560
-    card_bottom = 2940
-    card_box = (card_margin_x, card_top, W - card_margin_x, card_bottom)
+    # Instruction strip (high contrast)
+    strip = (card[0] + 120, card[1] + 90, card[2] - 120, card[1] + 178)
+    rounded_rect(draw, strip, 22, fill=(8, 20, 40, 176), outline=(255, 255, 255, 62), width=2)
+    strip_text = "Arahkan kamera HP ke QR berikut"
+    strip_w = draw.textlength(strip_text, font=f_sub)
+    draw_text_readable(draw, ((W - int(strip_w)) // 2, strip[1] + 22), strip_text, f_sub, fill=(255, 255, 255), stroke_width=2)
 
-    # card shadow
-    shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    sd = ImageDraw.Draw(shadow)
-    rounded_rect(sd, (card_box[0] + 8, card_box[1] + 20, card_box[2] + 8, card_box[3] + 20), 48, fill=(0, 0, 0, 110))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(18))
-    canvas.alpha_composite(shadow)
-
-    # card body
-    rounded_rect(draw, card_box, 48, fill=(255, 255, 255, 22), outline=(255, 255, 255, 70), width=2)
-
-    # subtle highlight line
-    draw.line((card_box[0] + 130, card_top + 1, card_box[2] - 130, card_top + 1), fill=(255, 255, 255, 130), width=2)
-
-    # Instruction text above QR
-    top_desc = "Gunakan kamera HP untuk scan QR code ini"
-    top_desc_w = draw.textlength(top_desc, font=f_desc)
-    draw_text_readable(draw, ((W - top_desc_w) // 2, card_top + 92), top_desc, f_desc, fill=(255, 255, 255), stroke_width=2)
-
-    # White QR panel for max readability
-    qr_panel_size = 1320
+    # QR panel (very clean white for scan reliability)
+    qr_panel_size = 1360
     qr_panel_x = (W - qr_panel_size) // 2
-    qr_panel_y = card_top + 210
+    qr_panel_y = card[1] + 230
     qr_panel = (qr_panel_x, qr_panel_y, qr_panel_x + qr_panel_size, qr_panel_y + qr_panel_size)
 
-    rounded_rect(draw, qr_panel, 32, fill=(255, 255, 255), outline=(235, 239, 248), width=3)
+    add_rounded_shadow(canvas, qr_panel, radius=36, color=(0, 0, 0, 95), blur=18, offset=(0, 10))
+    rounded_rect(draw, qr_panel, 36, fill=(255, 255, 255, 255), outline=(224, 232, 244, 255), width=5)
 
-    # QR code itself
-    qr_size = 1120
+    qr_size = 1140
     qr_img = make_qr(FORM_URL, qr_size)
     qr_x = (W - qr_size) // 2
     qr_y = qr_panel_y + (qr_panel_size - qr_size) // 2
     canvas.paste(qr_img, (qr_x, qr_y))
 
-    # Orange scan pill
-    pill_text = "SCAN ME"
-    pill_w = int(draw.textlength(pill_text, font=f_pill)) + 90
-    pill_h = 72
-    pill_x = qr_panel[2] - pill_w - 24
-    pill_y = qr_panel[1] - 36
-    rounded_rect(draw, (pill_x, pill_y, pill_x + pill_w, pill_y + pill_h), 24, fill=(245, 158, 11), outline=(255, 205, 96), width=2)
-    draw.text((pill_x + 44, pill_y + 16), pill_text, fill=(20, 15, 0), font=f_pill)
+    # Scan badge
+    scan_badge = "SCAN ME"
+    scan_w = int(draw.textlength(scan_badge, font=f_scan)) + 96
+    scan_h = 76
+    scan_x = qr_panel[2] - scan_w - 24
+    scan_y = qr_panel[1] - 38
+    rounded_rect(
+        draw,
+        (scan_x, scan_y, scan_x + scan_w, scan_y + scan_h),
+        25,
+        fill=(245, 158, 11, 255),
+        outline=(255, 214, 114, 255),
+        width=2,
+    )
+    draw.text((scan_x + 48, scan_y + 18), scan_badge, fill=(27, 18, 2), font=f_scan)
 
-    # Steps section
-    step_y = qr_panel[3] + 92
+    # Step chips (dark + bright text for readability)
     steps = [
-        "1) Scan QR dengan kamera HP",
-        "2) Isi formulir reservasi RuangKu",
-        "3) Tunggu konfirmasi dari staf BAK via WhatsApp",
+        "Scan QR dengan kamera HP",
+        "Isi borang reservasi ruang secara digital",
+        "Tunggu konfirmasi dari staf BAK",
     ]
-    for i, text in enumerate(steps):
-        draw_text_readable(draw, (card_box[0] + 120, step_y + i * 72), text, f_steps, fill=(248, 252, 255), stroke_width=2)
+    chip_left = card[0] + 120
+    chip_right = card[2] - 120
+    chip_h = 132
+    chip_gap = 24
+    chip_start_y = qr_panel[3] + 88
 
-    # Footer note
+    for i, txt in enumerate(steps):
+        y1 = chip_start_y + i * (chip_h + chip_gap)
+        y2 = y1 + chip_h
+        chip_box = (chip_left, y1, chip_right, y2)
+
+        add_rounded_shadow(canvas, chip_box, radius=28, color=(0, 0, 0, 82), blur=10, offset=(0, 6))
+        rounded_rect(draw, chip_box, 28, fill=(7, 18, 36, 188), outline=(255, 255, 255, 68), width=2)
+
+        # Number bubble
+        cx = chip_left + 66
+        cy = (y1 + y2) // 2
+        r = 34
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(245, 158, 11, 255), outline=(255, 217, 124, 255), width=2)
+        num = str(i + 1)
+        num_w = draw.textlength(num, font=f_step_num)
+        draw.text((cx - num_w / 2, cy - 25), num, fill=(26, 17, 2), font=f_step_num)
+
+        draw_text_readable(draw, (chip_left + 122, y1 + 42), txt, f_step, fill=(250, 253, 255), stroke_width=2)
+
+    # URL fallback panel (highest readability)
+    url_box = (card[0] + 130, card[3] - 260, card[2] - 130, card[3] - 108)
+    add_rounded_shadow(canvas, url_box, radius=24, color=(0, 0, 0, 90), blur=12, offset=(0, 6))
+    rounded_rect(draw, url_box, 24, fill=(255, 255, 255, 244), outline=(220, 228, 238, 255), width=3)
+
+    url_label = "Jika QR tidak terbaca, buka link ini:"
+    label_w = draw.textlength(url_label, font=f_url_label)
+    draw.text(((W - int(label_w)) // 2, url_box[1] + 26), url_label, fill=(52, 63, 82), font=f_url_label)
+
+    url_w = draw.textlength(SHORT_URL, font=f_url)
+    draw.text(
+        ((W - int(url_w)) // 2, url_box[1] + 74),
+        SHORT_URL,
+        fill=(16, 34, 68),
+        font=f_url,
+        stroke_width=1,
+        stroke_fill=(255, 255, 255),
+    )
+
+    # Footer
     footer = "RuangKu • Cepat • Transparan • Tanpa Antre"
     footer_w = draw.textlength(footer, font=f_footer)
-    draw_text_readable(draw, ((W - footer_w) // 2, card_bottom - 98), footer, f_footer, fill=(232, 240, 255), stroke_width=2)
+    draw_text_readable(draw, ((W - int(footer_w)) // 2, H - 90), footer, f_footer, fill=(224, 236, 255), stroke_width=2)
 
     # Save
     png_path = OUT_DIR / "RuangKu_QR_Poster_A4.png"
@@ -218,42 +291,65 @@ def generate_a4_poster():
 # -------------------------
 def generate_square_sticker():
     W, H = 2000, 2000
-    canvas = vertical_gradient(W, H, top=(10, 28, 56), mid=(18, 42, 77), bottom=(8, 18, 36)).convert("RGBA")
-    draw_glow_circle(canvas, (W - 180, 240), 300, color=(59, 130, 246), alpha=120, blur=72)
-    draw_glow_circle(canvas, (260, H - 180), 320, color=(124, 58, 237), alpha=95, blur=75)
+    canvas = vertical_gradient(W, H, top=(7, 20, 42), mid=(15, 37, 70), bottom=(8, 17, 35)).convert("RGBA")
+    draw_glow_circle(canvas, (W - 180, 260), 330, color=(59, 130, 246), alpha=130, blur=76)
+    draw_glow_circle(canvas, (250, H - 200), 340, color=(124, 58, 237), alpha=98, blur=78)
 
     draw = ImageDraw.Draw(canvas)
-    f_title = load_font(78, bold=True)
-    f_sub = load_font(38, bold=False)
+
+    f_title = load_font(82, bold=True)
+    f_sub = load_font(36, bold=False)
     f_badge = load_font(30, bold=True)
+    f_info = load_font(34, bold=True)
+    f_url = load_font(28, bold=False)
 
-    # Card
-    card = (130, 140, W - 130, H - 140)
-    rounded_rect(draw, card, 44, fill=(255, 255, 255, 20), outline=(255, 255, 255, 66), width=2)
+    # Main card
+    card = (120, 120, W - 120, H - 120)
+    add_rounded_shadow(canvas, card, radius=48, color=(0, 0, 0, 120), blur=20, offset=(0, 12))
+    rounded_rect(draw, card, 48, fill=(255, 255, 255, 22), outline=(255, 255, 255, 72), width=2)
 
-    title = "Reservasi Ruang"
+    title = "SCAN UNTUK RESERVASI"
     tw = draw.textlength(title, font=f_title)
-    draw.text(((W - tw) // 2, 220), title, fill=(255, 255, 255), font=f_title)
+    draw_text_readable(draw, ((W - int(tw)) // 2, 200), title, f_title, fill=(255, 255, 255), stroke_width=3)
 
-    subtitle = "Scan QR untuk isi Google Form"
+    subtitle_strip = (card[0] + 150, 320, card[2] - 150, 402)
+    rounded_rect(draw, subtitle_strip, 20, fill=(7, 18, 35, 182), outline=(255, 255, 255, 60), width=2)
+    subtitle = "Scan QR untuk isi borang digital"
     sw = draw.textlength(subtitle, font=f_sub)
-    draw_text_readable(draw, ((W - sw) // 2, 320), subtitle, f_sub, fill=(250, 252, 255), stroke_width=2)
+    draw_text_readable(draw, ((W - int(sw)) // 2, subtitle_strip[1] + 20), subtitle, f_sub, fill=(251, 253, 255), stroke_width=2)
 
     # QR panel
-    panel = (370, 430, W - 370, H - 370)
-    rounded_rect(draw, panel, 28, fill=(255, 255, 255), outline=(235, 239, 248), width=3)
+    panel_size = 1160
+    panel_x = (W - panel_size) // 2
+    panel_y = 450
+    panel = (panel_x, panel_y, panel_x + panel_size, panel_y + panel_size)
 
-    qr_size = 1120
+    add_rounded_shadow(canvas, panel, radius=30, color=(0, 0, 0, 95), blur=16, offset=(0, 8))
+    rounded_rect(draw, panel, 30, fill=(255, 255, 255, 255), outline=(225, 233, 244, 255), width=4)
+
+    qr_size = 980
     qr = make_qr(FORM_URL, qr_size)
-    canvas.paste(qr, ((W - qr_size) // 2, (H - qr_size) // 2 + 40))
+    canvas.paste(qr, ((W - qr_size) // 2, panel_y + (panel_size - qr_size) // 2))
 
+    # Corner badge
     badge = "RuangKu"
-    bw = int(draw.textlength(badge, font=f_badge)) + 56
-    bh = 58
+    bw = int(draw.textlength(badge, font=f_badge)) + 58
+    bh = 60
     bx = panel[2] - bw - 18
     by = panel[1] - 30
-    rounded_rect(draw, (bx, by, bx + bw, by + bh), 20, fill=(245, 158, 11), outline=(255, 209, 106), width=2)
-    draw.text((bx + 28, by + 12), badge, fill=(30, 18, 0), font=f_badge)
+    rounded_rect(draw, (bx, by, bx + bw, by + bh), 21, fill=(245, 158, 11), outline=(255, 214, 112), width=2)
+    draw.text((bx + 30, by + 13), badge, fill=(30, 18, 0), font=f_badge)
+
+    # Bottom readability strip
+    info_box = (220, 1660, W - 220, 1774)
+    rounded_rect(draw, info_box, 20, fill=(255, 255, 255, 244), outline=(220, 228, 238, 255), width=3)
+    info_text = "Scan • Isi Borang Digital • Selesai"
+    iw = draw.textlength(info_text, font=f_info)
+    draw.text(((W - int(iw)) // 2, info_box[1] + 34), info_text, fill=(19, 37, 70), font=f_info)
+
+    url_text = SHORT_URL
+    uw = draw.textlength(url_text, font=f_url)
+    draw_text_readable(draw, ((W - int(uw)) // 2, 1808), url_text, f_url, fill=(235, 244, 255), stroke_width=2)
 
     out = OUT_DIR / "RuangKu_QR_Sticker_Square.png"
     canvas.convert("RGB").save(out, dpi=(300, 300), optimize=True)
