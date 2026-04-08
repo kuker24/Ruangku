@@ -85,6 +85,20 @@ def rounded_rect(draw: ImageDraw.ImageDraw, box, radius, fill=None, outline=None
     draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
 
 
+def draw_text_readable(
+    draw: ImageDraw.ImageDraw,
+    xy: tuple[int, int],
+    text: str,
+    font: ImageFont.ImageFont,
+    *,
+    fill: tuple[int, int, int] = (255, 255, 255),
+    stroke_fill: tuple[int, int, int] = (8, 18, 36),
+    stroke_width: int = 2,
+):
+    """Draw text with subtle dark stroke so it stays readable on bright gradients."""
+    draw.text(xy, text, fill=fill, font=font, stroke_width=stroke_width, stroke_fill=stroke_fill)
+
+
 def save_with_dpi(image: Image.Image, png_path: Path, pdf_path: Path, dpi=300):
     image_rgb = image.convert("RGB")
     image_rgb.save(png_path, format="PNG", dpi=(dpi, dpi), optimize=True)
@@ -122,7 +136,7 @@ def generate_a4_poster():
 
     sub_text = "Sistem Reservasi Ruang Kampus Digital"
     sub_w = draw.textlength(sub_text, font=f_sub)
-    draw.text(((W - sub_w) // 2, 268), sub_text, fill=(195, 210, 235), font=f_sub)
+    draw_text_readable(draw, ((W - sub_w) // 2, 268), sub_text, f_sub, fill=(246, 250, 255), stroke_width=2)
 
     # Main heading
     h_text = "SCAN UNTUK RESERVASI"
@@ -151,7 +165,7 @@ def generate_a4_poster():
     # Instruction text above QR
     top_desc = "Gunakan kamera HP untuk scan QR code ini"
     top_desc_w = draw.textlength(top_desc, font=f_desc)
-    draw.text(((W - top_desc_w) // 2, card_top + 92), top_desc, fill=(234, 241, 255), font=f_desc)
+    draw_text_readable(draw, ((W - top_desc_w) // 2, card_top + 92), top_desc, f_desc, fill=(255, 255, 255), stroke_width=2)
 
     # White QR panel for max readability
     qr_panel_size = 1320
@@ -185,12 +199,12 @@ def generate_a4_poster():
         "3) Tunggu konfirmasi dari staf BAK via WhatsApp",
     ]
     for i, text in enumerate(steps):
-        draw.text((card_box[0] + 120, step_y + i * 72), text, fill=(229, 238, 255), font=f_steps)
+        draw_text_readable(draw, (card_box[0] + 120, step_y + i * 72), text, f_steps, fill=(248, 252, 255), stroke_width=2)
 
     # Footer note
     footer = "RuangKu • Cepat • Transparan • Tanpa Antre"
     footer_w = draw.textlength(footer, font=f_footer)
-    draw.text(((W - footer_w) // 2, card_bottom - 98), footer, fill=(170, 193, 232), font=f_footer)
+    draw_text_readable(draw, ((W - footer_w) // 2, card_bottom - 98), footer, f_footer, fill=(232, 240, 255), stroke_width=2)
 
     # Save
     png_path = OUT_DIR / "RuangKu_QR_Poster_A4.png"
@@ -223,7 +237,7 @@ def generate_square_sticker():
 
     subtitle = "Scan QR untuk isi Google Form"
     sw = draw.textlength(subtitle, font=f_sub)
-    draw.text(((W - sw) // 2, 320), subtitle, fill=(200, 217, 245), font=f_sub)
+    draw_text_readable(draw, ((W - sw) // 2, 320), subtitle, f_sub, fill=(250, 252, 255), stroke_width=2)
 
     # QR panel
     panel = (370, 430, W - 370, H - 370)
