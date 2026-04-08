@@ -16,7 +16,7 @@ from pathlib import Path
 import qrcode
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-FORM_URL = "https://receivers-history-estimates-graphs.trycloudflare.com/"
+FORM_URL = "https://kuker24.github.io/Ruangku/"
 
 ROOT = Path(__file__).resolve().parent
 OUT_DIR = ROOT / "assets" / "qr"
